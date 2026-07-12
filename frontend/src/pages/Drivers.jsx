@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import client from '../api/client';
 import { StatusBadge } from './Dashboard';
 import { Modal } from './Vehicles';
-
 const EMPTY = { name: '', license_number: '', license_category: '', license_expiry: '', contact_number: '', safety_score: 100, status: 'Available' };
 const STATUSES = ['Available', 'On Trip', 'Off Duty', 'Suspended'];
-
 function expiryClass(dateStr) {
   if (!dateStr) return '';
   const diff = (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24);
@@ -13,7 +11,6 @@ function expiryClass(dateStr) {
   if (diff < 30) return 'bg-yellow-50 text-yellow-700 font-semibold';
   return '';
 }
-
 export default function Drivers() {
   const [drivers,  setDrivers]  = useState([]);
   const [search,   setSearch]   = useState('');
@@ -22,12 +19,10 @@ export default function Drivers() {
   const [editId,   setEditId]   = useState(null);
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
-
   function load() {
     client.get('/drivers').then(r => setDrivers(r.data)).catch(() => {});
   }
   useEffect(load, []);
-
   function openAdd()   { setForm(EMPTY); setEditId(null); setError(''); setModal('add'); }
   function openEdit(d) { setForm({ ...d, license_expiry: d.license_expiry?.slice(0,10) }); setEditId(d.id); setError(''); setModal('edit'); }
   function closeModal(){ setModal(null); }
