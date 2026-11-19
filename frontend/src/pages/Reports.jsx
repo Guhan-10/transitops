@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import client from '../api/client';
+import client, { API_URL } from '../api/client';
 import { StatusBadge } from './Dashboard';
 
 export default function Reports() {
@@ -16,7 +16,7 @@ export default function Reports() {
   function handleCsvDownload() {
     const token = localStorage.getItem('transitops_token');
     // Open in new tab; browser will handle the download
-    const url = 'http://localhost:3001/api/reports/csv';
+    const url = `${API_URL}/api/reports/csv`;
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.blob())
       .then(blob => {

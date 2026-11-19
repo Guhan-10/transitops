@@ -29,3 +29,6 @@ Thumbs.db
 
 # Vite cache
 .vite/
+
+# Database dumps (contain password hashes and personal data)
+backups/

@@ -9,6 +9,11 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit:    10,
   queueLimit:         0,
+  // Managed MySQL hosts require TLS; set DB_SSL=true there, plus DB_SSL_CA
+  // (the PEM text) if the provider uses its own certificate authority.
+  ssl:                process.env.DB_SSL === 'true'
+    ? { rejectUnauthorized: true, ca: process.env.DB_SSL_CA || undefined }
+    : undefined,
 });
 
 module.exports = pool;

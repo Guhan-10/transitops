@@ -15,49 +15,84 @@ A full-stack fleet and transport management platform with role-based access cont
 
 ## Setup
 
+Requirements: Node.js 22+, npm, MySQL 8+ (local install or Docker).
+
 ### 1. Create the database
 
 ```bash
-# From the transitops/ root folder
-Get-Content schema.sql | mysql -u YOUR_USER -pYOUR_PASSWORD
+mysql -u YOUR_USER -p < schema.sql
 ```
+
+On Windows PowerShell: `Get-Content schema.sql | mysql -u YOUR_USER -p`
 
 ### 2. Configure environment
 
+Backend: copy the template and fill in your MySQL details and a JWT secret.
+
 ```bash
-cd backend
-copy ..\\.env.example .env
+cp .env.example backend/.env
 ```
 
-Edit `backend/.env`:
+Generate `JWT_SECRET` with:
 
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=your_mysql_user
-DB_PASSWORD=your_mysql_password
-DB_NAME=transitops
-JWT_SECRET=run_this_to_generate: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-PORT=3001
+
+Frontend (optional for local dev; defaults to `http://localhost:3001`):
+
+```bash
+cp frontend/.env.example frontend/.env
 ```
+
+On Windows use `copy` instead of `cp`.
 
 ### 3. Start the servers
 
 **Backend** (port 3001):
 ```bash
 cd backend
-npm install
+npm ci
 npm run dev
 ```
 
 **Frontend** (port 5173):
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Open **http://localhost:5173**
+Open **http://localhost:5173/transitops/** (the app is served under `/transitops/`, the same path as on GitHub Pages).
+
+Check the API with `curl http://localhost:3001/api/health`.
+
+### 4. Run the tests
+
+The backend tests use a **separate** database and drop and recreate all of its tables.
+The database name must end in `_test`.
+
+```bash
+cp backend/.env.test.example backend/.env.test
+```
+
+Edit `backend/.env.test` with a MySQL user that can create databases, then:
+
+```bash
+cd backend
+npm test
+```
+
+No local MySQL? Start a throwaway one with Docker and set `DB_PORT=3307` in `.env.test`:
+
+```bash
+docker run -d --name transitops-test-mysql -e MYSQL_ROOT_PASSWORD=root -p 127.0.0.1:3307:3306 mysql:8.4
+```
+
+### Hosting and CI
+
+See [docs/DEPLOY.md](docs/DEPLOY.md). Every pull request runs the tests and the frontend build;
+pushes to `main` deploy only when both pass.
 
 ---
 
@@ -66,23 +101,35 @@ Open **http://localhost:5173**
 ```
 transitops/
 ├── schema.sql                    # Run to create DB and all tables
-├── .env.example                  # Env variable template (no secrets)
+├── .env.example                  # Backend env template (no secrets)
+├── .github/workflows/ci.yml      # Tests on every PR; deploy on green main
+├── docs/
+│   ├── DEPLOY.md                 # Hosting + CI setup
+│   └── v1/                       # Frozen v1 record (endpoints, freeze checklist)
+├── scripts/db/
+│   ├── dump.sh                   # mysqldump + exact row counts
+│   └── verify-restore.sh         # Restore into empty DB, compare counts
 ├── backend/
-│   ├── server.js                 # Express entry point
+│   ├── app.js                    # Express app (routes, health check, errors)
+│   ├── server.js                 # Entry point: loads .env, starts listening
 │   ├── db.js                     # mysql2 connection pool
+│   ├── .env.test.example         # Test database template
 │   ├── middleware/
 │   │   ├── auth.js               # JWT Bearer verification
-│   │   └── rbac.js               # requireRole() factory
-│   └── routes/
-│       ├── auth.js               # /api/auth/login, /signup
-│       ├── vehicles.js           # /api/vehicles (CRUD)
-│       ├── drivers.js            # /api/drivers (CRUD)
-│       ├── trips.js              # /api/trips + dispatch/complete/cancel
-│       ├── maintenance.js        # /api/maintenance + close
-│       ├── fuel.js               # /api/fuel-logs
-│       ├── expenses.js           # /api/expenses
-│       └── reports.js            # /api/reports (dashboard, summary, csv)
+│   │   ├── rbac.js               # requireRole() factory
+│   │   └── validate.js           # Input validation helpers
+│   ├── routes/
+│   │   ├── auth.js               # /api/auth/login, /signup
+│   │   ├── vehicles.js           # /api/vehicles (CRUD)
+│   │   ├── drivers.js            # /api/drivers (CRUD)
+│   │   ├── trips.js              # /api/trips + dispatch/complete/cancel
+│   │   ├── maintenance.js        # /api/maintenance + close
+│   │   ├── fuel.js               # /api/fuel-logs
+│   │   ├── expenses.js           # /api/expenses
+│   │   └── reports.js            # /api/reports (dashboard, summary, csv)
+│   └── tests/                    # Jest + Supertest (separate _test database)
 └── frontend/
+    ├── .env.example              # VITE_API_URL
     └── src/
         ├── App.jsx               # Router + sidebar layout + PrivateRoute
         ├── api/client.js         # Axios instance with JWT interceptor
@@ -101,6 +148,13 @@ transitops/
 ---
 
 ## API Reference
+
+Full v1 inventory (30 endpoints): [docs/v1/ENDPOINTS.md](docs/v1/ENDPOINTS.md).
+
+### Health
+| Method | Path        | Notes                                           |
+|--------|-------------|-------------------------------------------------|
+| GET    | /api/health | `200 {status:"ok",db:"up"}`, or `503` if the DB is unreachable |
 
 ### Auth
 | Method | Path               | Body                                  |
